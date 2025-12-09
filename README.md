@@ -2,7 +2,7 @@
 
 Robot interaktif berbasis ESP32-C3 dengan ekspresi mata animasi pada OLED display. Robot ini dapat merespons interaksi pengguna melalui tombol dan menampilkan berbagai emosi serta pergerakan otomatis.
 
-![Preview](asset/preview.mp4)
+[![Preview](asset/preview.gif)](asset/preview.mp4)
 
 ## Deskripsi
 
