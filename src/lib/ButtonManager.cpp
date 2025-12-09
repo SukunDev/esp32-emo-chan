@@ -6,7 +6,8 @@ ButtonManager::ButtonManager(int pin)
       lastChangeTime(0),
       buttonDownTime(0),
       clickCount(0),
-      longPressFired(false)
+      longPressFired(false),
+      longPressActive(false)
 {
 }
 
@@ -25,43 +26,63 @@ void ButtonManager::addLongPressCallback(std::function<void()> cb)
   longPressCallbacks.push_back(cb);
 }
 
+void ButtonManager::addLongPressReleaseCallback(std::function<void()> cb)
+{
+  longPressReleaseCallbacks.push_back(cb);
+}
+
 void ButtonManager::update()
 {
   bool reading = digitalRead(pin);
   unsigned long now = millis();
 
-  // Debounce change
+  // Debounce
   if (reading != lastState)
   {
     lastChangeTime = now;
     lastState = reading;
-    longPressFired = false;
 
+    // When pressed start timing
     if (reading == HIGH)
-      buttonDownTime = now; // pressed
+    {
+      buttonDownTime = now;
+      longPressFired = false;
+      longPressActive = false;
+    }
   }
 
   // Release detection (HIGH → LOW)
   if (reading == LOW && (now - lastChangeTime) > debounceDelay)
   {
+    // If long press was active → fire long press release
+    if (longPressActive)
+    {
+      onLongPressRelease();
+      longPressActive = false;
+      buttonDownTime = 0;
+      return; // prevent click logic
+    }
+
+    // Normal short/multi click
     if (buttonDownTime > 0 && !longPressFired)
       clickCount++;
 
     buttonDownTime = 0;
   }
 
-  // Long press
+  // Long press detection
   if (reading == HIGH &&
       buttonDownTime > 0 &&
       !longPressFired &&
       (now - buttonDownTime >= longPressTime))
   {
     longPressFired = true;
+    longPressActive = true;
     clickCount = 0;
     onLongPress();
   }
 
-  // Multi-click
+  // Multi-click dispatch
   if (clickCount > 0 &&
       (now - lastChangeTime) > multiClickDelay)
   {
@@ -80,6 +101,13 @@ void ButtonManager::onClick(int count)
 void ButtonManager::onLongPress()
 {
   for (auto &cb : longPressCallbacks)
+    if (cb)
+      cb();
+}
+
+void ButtonManager::onLongPressRelease()
+{
+  for (auto &cb : longPressReleaseCallbacks)
     if (cb)
       cb();
 }

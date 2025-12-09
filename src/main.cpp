@@ -26,8 +26,8 @@
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 MotorManager motor(MOTOR_IN1, MOTOR_IN2, MOTOR_IN3, MOTOR_IN4);
 SoundPlayer melody(BUZZER_PIN);
-ButtonManager btn(BUTTON_PIN);
-RobotPet robotPet(display, melody, motor, btn, SCREEN_WIDTH, SCREEN_HEIGHT, 100);
+ButtonManager button(BUTTON_PIN);
+RobotPet robotPet(display, melody, motor, SCREEN_WIDTH, SCREEN_HEIGHT, 100);
 
 void scanI2C();
 
@@ -38,6 +38,14 @@ void setup()
   Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
   Wire.setClock(100000);
   scanI2C();
+
+  button.begin();
+  button.addClickCallback([](int count)
+                          { robotPet.shortClick(count); });
+  button.addLongPressCallback([]()
+                              { robotPet.longClick(); });
+  button.addLongPressReleaseCallback([]()
+                                     { robotPet.longClickRelease(); });
 
   if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS))
   {
@@ -54,6 +62,7 @@ void setup()
 void loop()
 {
   robotPet.update();
+  button.update();
 }
 
 void scanI2C()

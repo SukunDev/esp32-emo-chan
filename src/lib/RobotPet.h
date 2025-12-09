@@ -6,7 +6,6 @@
 #include <lib/FluxGarage_RoboEyes.h>
 #include "SoundPlayer.h"
 #include "MotorManager.h"
-#include "ButtonManager.h"
 
 class RobotPet
 {
@@ -15,7 +14,6 @@ private:
   RoboEyes<Adafruit_SSD1306> roboEyes;
   SoundPlayer &melody;
   MotorManager &motor;
-  ButtonManager &button;
 
   int screenWidth, screenHeight, refreshDelay;
 
@@ -23,6 +21,7 @@ private:
   {
     Default,
     Happy,
+    LongHappy,
     Scared,
     Scare,
     Curiosity,
@@ -49,6 +48,8 @@ private:
   static const unsigned long SCARED_DURATION = 2000;
 
   unsigned long lastActionTime;
+  unsigned long lastMotorActionTime;
+  unsigned long randomMotorInterval;
 
   void setDefaultState()
   {
@@ -80,6 +81,19 @@ private:
     roboEyes.setHeight(36, 36);
     roboEyes.setBorderradius(8, 8);
     roboEyes.anim_laugh();
+    roboEyes.setIdleMode(OFF);
+    roboEyes.setAutoblinker(OFF);
+    Serial.print("CurrentState: Happy");
+    Serial.println();
+  }
+  void enterLongHappyState()
+  {
+    currentState = LongHappy;
+    roboEyes.setMood(HAPPY);
+    roboEyes.setWidth(32, 32);
+    roboEyes.setHeight(36, 36);
+    roboEyes.setBorderradius(8, 8);
+    roboEyes.setVFlicker(ON, 5);
     roboEyes.setIdleMode(OFF);
     roboEyes.setAutoblinker(OFF);
     Serial.print("CurrentState: Happy");
@@ -173,73 +187,9 @@ private:
     Serial.println();
   }
 
-  void shortClick(int clickCount)
-  {
-    Serial.print("Click: ");
-    Serial.println(clickCount);
-    if ((currentState == Asleep || currentState == Sleepy))
-    {
-      enterAngryState();
-      motor.backward();
-      delay(75);
-      motor.stop();
-      lastActionTime = millis();
-    }
-    if (clickCount == 1)
-    {
-      if ((currentState == Default || currentState == Curiosity))
-      {
-        unsigned int randomChoice = random(1, 11);
-        if (randomChoice > 7)
-        {
-          enterAngryState();
-          motor.backward();
-          delay(75);
-          motor.stop();
-          lastActionTime = millis();
-        }
-        else
-        {
-          enterHappyState();
-          lastActionTime = millis();
-        }
-      }
-    }
-    // if (clickCount == 2)
-    // {
-    //   motor.right();
-    //   delay(75);
-    //   motor.stop();
-    // }
-    // if (clickCount == 3)
-    // {
-    //   motor.forward();
-    //   delay(75);
-    //   motor.stop();
-    // }
-    if (clickCount == 4)
-    {
-      if ((currentState != Scared))
-      {
-        enterScaredState();
-        lastActionTime = millis();
-      }
-    }
-  }
-
-  void longClick()
-  {
-    Serial.println("LONG PRESS!");
-    if ((currentState == Default || currentState == Curiosity))
-    {
-      enterHappyState();
-      lastActionTime = millis();
-    }
-  }
-
 public:
-  RobotPet(Adafruit_SSD1306 &disp, SoundPlayer &buzzer, MotorManager &mtr, ButtonManager &btn, int width, int heigh, int delay)
-      : display(disp), roboEyes(disp), melody(buzzer), motor(mtr), button(btn), screenWidth(width), screenHeight(heigh), refreshDelay(delay), currentState(Default), lastActionTime(0) {}
+  RobotPet(Adafruit_SSD1306 &disp, SoundPlayer &buzzer, MotorManager &mtr, int width, int heigh, int delay)
+      : display(disp), roboEyes(disp), melody(buzzer), motor(mtr), screenWidth(width), screenHeight(heigh), refreshDelay(delay), currentState(Default), lastActionTime(0) {}
 
   void begin()
   {
@@ -248,12 +198,6 @@ public:
     roboEyes.begin(screenWidth, screenHeight, refreshDelay);
     setDefaultState();
 
-    button.begin();
-    button.addClickCallback([this](int count)
-                            { this->shortClick(count); });
-
-    button.addLongPressCallback([this]()
-                                { this->longClick(); });
     lastActionTime = millis();
   }
 
@@ -261,6 +205,7 @@ public:
   {
     unsigned long now = millis();
     unsigned long elapsed = now - lastActionTime;
+    unsigned long motorElapsed = now - lastMotorActionTime;
 
     switch (currentState)
     {
@@ -278,6 +223,12 @@ public:
           enterCuriosityState();
           lastActionTime = now;
         }
+      }
+      if (motorElapsed >= randomMotorInterval)
+      {
+        randomMotorMovement();
+        randomMotorInterval = random(1600, 10000);
+        lastMotorActionTime = now;
       }
       break;
     case Angry:
@@ -323,6 +274,12 @@ public:
           lastActionTime = now;
         }
       }
+      if (motorElapsed >= randomMotorInterval)
+      {
+        randomMotorMovement();
+        randomMotorInterval = random(3200, 10000);
+        lastMotorActionTime = now;
+      }
       break;
     case Sleepy:
       if (elapsed >= DEEP_SLEEP_DELAY)
@@ -351,7 +308,91 @@ public:
     }
 
     roboEyes.update();
-    button.update();
+  }
+  void shortClick(int clickCount)
+  {
+    Serial.print("Click: ");
+    Serial.println(clickCount);
+    if ((currentState == Asleep || currentState == Sleepy))
+    {
+      enterAngryState();
+      motor.backward();
+      delay(75);
+      motor.stop();
+      lastActionTime = millis();
+    }
+    if (clickCount == 1)
+    {
+      if ((currentState == Default || currentState == Curiosity))
+      {
+        unsigned int randomChoice = random(1, 11);
+        if (randomChoice > 7)
+        {
+          enterAngryState();
+          motor.backward();
+          delay(75);
+          motor.stop();
+          lastActionTime = millis();
+        }
+        else
+        {
+          enterHappyState();
+          lastActionTime = millis();
+        }
+      }
+    }
+    if (clickCount == 4)
+    {
+      if ((currentState != Scared))
+      {
+        enterScaredState();
+        lastActionTime = millis();
+      }
+    }
+  }
+
+  void longClick()
+  {
+    Serial.println("LONG PRESS!");
+    if ((currentState == Default || currentState == Curiosity))
+    {
+      enterLongHappyState();
+      lastActionTime = millis();
+    }
+  }
+
+  void longClickRelease()
+  {
+    Serial.println("LONG PRESS RELEASE!");
+    currentState = Happy;
+  }
+
+  void randomMotorMovement()
+  {
+    unsigned int motorChoice = random(1, 5);
+    switch (motorChoice)
+    {
+    case 1:
+      motor.forward();
+      delay(75);
+      motor.stop();
+      break;
+    case 2:
+      motor.backward();
+      delay(75);
+      motor.stop();
+      break;
+    case 3:
+      motor.left();
+      delay(75);
+      motor.stop();
+      break;
+    case 4:
+      motor.right();
+      delay(75);
+      motor.stop();
+      break;
+    }
   }
 };
 
