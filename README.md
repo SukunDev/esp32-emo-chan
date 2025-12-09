@@ -1,4 +1,4 @@
-# Pet Robot
+# ESP32 Emo Chan
 
 Robot interaktif berbasis ESP32-C3 dengan ekspresi mata animasi pada OLED display. Robot ini dapat merespons interaksi pengguna melalui tombol dan menampilkan berbagai emosi serta pergerakan otomatis.
 
@@ -6,7 +6,7 @@ Robot interaktif berbasis ESP32-C3 dengan ekspresi mata animasi pada OLED displa
 
 ## Deskripsi
 
-Pet Robot adalah proyek robot interaktif yang menggunakan ESP32-C3 sebagai mikrokontroler utama. Robot ini dilengkapi dengan:
+ESP32 Emo Chan adalah proyek robot interaktif yang menggunakan ESP32-C3 sebagai mikrokontroler utama. Robot ini dilengkapi dengan:
 
 - **OLED Display (SSD1306)** - Menampilkan mata robot dengan animasi yang halus dan ekspresif
 - **Motor DC** - Menggerakkan robot ke berbagai arah (maju, mundur, kiri, kanan)
