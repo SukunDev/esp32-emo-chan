@@ -2,7 +2,7 @@
 
 Robot interaktif berbasis ESP32-C3 dengan ekspresi mata animasi pada OLED display. Robot ini dapat merespons interaksi pengguna melalui tombol dan menampilkan berbagai emosi serta pergerakan otomatis.
 
-![Preview](https://github.com/SukunDev/esp32-emo-chan/blob/main/asset/preview.mp4)
+![Preview](asset/preview.mp4)
 
 ## Deskripsi
 
@@ -74,7 +74,7 @@ Robot memiliki sistem state machine yang kompleks dengan berbagai emosi dan peri
 
 1. **Clone repository**
 ```bash
-git clone https://github.com/SukunDev/esp32-emo-chan.git
+git clone <repository-url>
 cd pet_robot
 ```
 
