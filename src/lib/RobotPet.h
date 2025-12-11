@@ -83,9 +83,9 @@ private:
     roboEyes.anim_laugh();
     roboEyes.setIdleMode(OFF);
     roboEyes.setAutoblinker(OFF);
-    Serial.print("CurrentState: Happy");
-    Serial.println();
+    Serial.println("CurrentState: Happy");
   }
+
   void enterLongHappyState()
   {
     currentState = LongHappy;
@@ -96,9 +96,9 @@ private:
     roboEyes.setVFlicker(ON, 5);
     roboEyes.setIdleMode(OFF);
     roboEyes.setAutoblinker(OFF);
-    Serial.print("CurrentState: Happy");
-    Serial.println();
+    Serial.println("CurrentState: LongHappy");
   }
+
   void enterScaredState()
   {
     currentState = Scared;
@@ -111,8 +111,7 @@ private:
     roboEyes.setVFlicker(ON, 3);
     roboEyes.setHFlicker(ON, 3);
     roboEyes.setAutoblinker(OFF);
-    Serial.print("CurrentState: Scared");
-    Serial.println();
+    Serial.println("CurrentState: Scared");
   }
 
   void enterScareState()
@@ -127,8 +126,7 @@ private:
     roboEyes.setVFlicker(ON, 3);
     roboEyes.setHFlicker(ON, 3);
     roboEyes.setAutoblinker(OFF);
-    Serial.print("CurrentState: Scare");
-    Serial.println();
+    Serial.println("CurrentState: Scare");
   }
 
   void enterCuriosityState()
@@ -144,8 +142,7 @@ private:
     roboEyes.setHFlicker(OFF);
     roboEyes.setSweat(OFF);
     roboEyes.setCuriosity(ON);
-    Serial.print("CurrentState: Curiosity");
-    Serial.println();
+    Serial.println("CurrentState: Curiosity");
   }
 
   void enterSleepyState()
@@ -157,8 +154,7 @@ private:
     roboEyes.setSweat(OFF);
     roboEyes.setAutoblinker(ON, 2, 2);
     roboEyes.setIdleMode(OFF);
-    Serial.print("CurrentState: Sleepy");
-    Serial.println();
+    Serial.println("CurrentState: Sleepy");
   }
 
   void enterAsleepState()
@@ -170,8 +166,7 @@ private:
     roboEyes.setAutoblinker(OFF);
     roboEyes.setIdleMode(OFF);
     roboEyes.setBorderradius(0, 0);
-    Serial.print("CurrentState: Asleep");
-    Serial.println();
+    Serial.println("CurrentState: Asleep");
   }
 
   void enterAngryState()
@@ -183,13 +178,17 @@ private:
     roboEyes.setBorderradius(8, 8);
     roboEyes.setPosition(DEFAULT);
     roboEyes.setHFlicker(ON, 2);
-    Serial.print("CurrentState: Angry");
-    Serial.println();
+    Serial.println("CurrentState: Angry");
   }
 
 public:
+  // === PUBLIC VARIABLE UNTUK STOP SEMUA AKSI ===
+  bool isRunning = true;
+
   RobotPet(Adafruit_SSD1306 &disp, SoundPlayer &buzzer, MotorManager &mtr, int width, int heigh, int delay)
-      : display(disp), roboEyes(disp), melody(buzzer), motor(mtr), screenWidth(width), screenHeight(heigh), refreshDelay(delay), currentState(Default), lastActionTime(0) {}
+      : display(disp), roboEyes(disp), melody(buzzer), motor(mtr),
+        screenWidth(width), screenHeight(heigh), refreshDelay(delay),
+        currentState(Default), lastActionTime(0) {}
 
   void begin()
   {
@@ -203,6 +202,12 @@ public:
 
   void update()
   {
+    // === GLOBAL STOP ===
+    if (!isRunning)
+    {
+      return;
+    }
+
     unsigned long now = millis();
     unsigned long elapsed = now - lastActionTime;
     unsigned long motorElapsed = now - lastMotorActionTime;
@@ -214,15 +219,11 @@ public:
       {
         unsigned int randomChoice = random(1, 11);
         if (randomChoice > 8)
-        {
           enterSleepyState();
-          lastActionTime = now;
-        }
         else
-        {
           enterCuriosityState();
-          lastActionTime = now;
-        }
+
+        lastActionTime = now;
       }
       if (motorElapsed >= randomMotorInterval)
       {
@@ -231,6 +232,7 @@ public:
         lastMotorActionTime = now;
       }
       break;
+
     case Angry:
       if (elapsed >= ANGRY_DURATION)
       {
@@ -238,6 +240,7 @@ public:
         lastActionTime = now;
       }
       break;
+
     case Scare:
       if (elapsed >= SCARE_DURATION)
       {
@@ -245,6 +248,7 @@ public:
         lastActionTime = now;
       }
       break;
+
     case Scared:
       if (elapsed >= SCARED_DURATION)
       {
@@ -252,6 +256,7 @@ public:
         lastActionTime = now;
       }
       break;
+
     case Happy:
       if (elapsed >= HAPPY_DURATION)
       {
@@ -259,20 +264,17 @@ public:
         lastActionTime = now;
       }
       break;
+
     case Curiosity:
       if (elapsed >= CURIOSITY_DURATION)
       {
         unsigned int randomChoice = random(1, 11);
         if (randomChoice > 7)
-        {
           enterSleepyState();
-          lastActionTime = now;
-        }
         else
-        {
           enterDefaultState();
-          lastActionTime = now;
-        }
+
+        lastActionTime = now;
       }
       if (motorElapsed >= randomMotorInterval)
       {
@@ -281,6 +283,7 @@ public:
         lastMotorActionTime = now;
       }
       break;
+
     case Sleepy:
       if (elapsed >= DEEP_SLEEP_DELAY)
       {
@@ -294,25 +297,26 @@ public:
       {
         unsigned int randomChoice = random(1, 11);
         if (randomChoice > 8)
-        {
           enterSleepyState();
-          lastActionTime = now;
-        }
         else
-        {
           enterDefaultState();
-          lastActionTime = now;
-        }
+
+        lastActionTime = now;
       }
       break;
     }
 
     roboEyes.update();
   }
+
   void shortClick(int clickCount)
   {
+    if (!isRunning)
+      return;
+
     Serial.print("Click: ");
     Serial.println(clickCount);
+
     if ((currentState == Asleep || currentState == Sleepy))
     {
       enterAngryState();
@@ -321,6 +325,7 @@ public:
       motor.stop();
       lastActionTime = millis();
     }
+
     if (clickCount == 1)
     {
       if ((currentState == Default || currentState == Curiosity))
@@ -332,18 +337,18 @@ public:
           motor.backward();
           delay(75);
           motor.stop();
-          lastActionTime = millis();
         }
         else
         {
           enterHappyState();
-          lastActionTime = millis();
         }
+        lastActionTime = millis();
       }
     }
+
     if (clickCount == 4)
     {
-      if ((currentState != Scared))
+      if (currentState != Scared)
       {
         enterScaredState();
         lastActionTime = millis();
@@ -353,8 +358,11 @@ public:
 
   void longClick()
   {
+    if (!isRunning)
+      return;
+
     Serial.println("LONG PRESS!");
-    if ((currentState == Default || currentState == Curiosity))
+    if (currentState == Default || currentState == Curiosity)
     {
       enterLongHappyState();
       lastActionTime = millis();
@@ -363,36 +371,40 @@ public:
 
   void longClickRelease()
   {
+    if (!isRunning)
+      return;
+
     Serial.println("LONG PRESS RELEASE!");
     currentState = Happy;
   }
 
   void randomMotorMovement()
   {
+    if (!isRunning)
+    {
+      motor.stop();
+      return;
+    }
+
     unsigned int motorChoice = random(1, 5);
     switch (motorChoice)
     {
     case 1:
       motor.forward();
-      delay(75);
-      motor.stop();
       break;
     case 2:
       motor.backward();
-      delay(75);
-      motor.stop();
       break;
     case 3:
       motor.left();
-      delay(75);
-      motor.stop();
       break;
     case 4:
       motor.right();
-      delay(75);
-      motor.stop();
       break;
     }
+
+    delay(75);
+    motor.stop();
   }
 };
 

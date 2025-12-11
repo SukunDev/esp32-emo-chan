@@ -6,6 +6,7 @@
 #include "lib/RobotPet.h"
 #include "lib/MotorManager.h"
 #include "lib/ButtonManager.h"
+#include "lib/BLEManager.h"
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -27,8 +28,15 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 MotorManager motor(MOTOR_IN1, MOTOR_IN2, MOTOR_IN3, MOTOR_IN4);
 SoundPlayer melody(BUZZER_PIN);
 ButtonManager button(BUTTON_PIN);
+BLEManager ble;
 RobotPet robotPet(display, melody, motor, SCREEN_WIDTH, SCREEN_HEIGHT, 100);
 
+bool isBLEConnected = false;
+bool isBLEMessageActive = false;
+unsigned long lastBLEMessageTime = 0;
+static const unsigned long BLE_MESSAGE_TIMEOUT = 15000;
+
+void handleBLEMessage(String message);
 void scanI2C();
 
 void setup()
@@ -55,14 +63,47 @@ void setup()
   }
   robotPet.begin();
 
+  ble.setOnMessageCallback([](String message)
+                           { handleBLEMessage(message); });
+
+  ble.setOnConnectCallback([]()
+                           {
+    Serial.println("[BLE] Connected!");
+    isBLEConnected = true; });
+
+  ble.setOnDisconnectCallback([]()
+                              {
+    Serial.println("[BLE] Disconnected!");
+    isBLEConnected = false; });
+
+  ble.begin("PetRobot-c3");
+  Serial.println("[BLE] BLE Manager initialized");
+
   display.clearDisplay();
   display.display();
 }
 
 void loop()
 {
-  robotPet.update();
+  unsigned long now = millis();
+
+  if (now - lastBLEMessageTime > BLE_MESSAGE_TIMEOUT)
+  {
+    isBLEMessageActive = false;
+  }
+
+  if (!isBLEMessageActive)
+  {
+    robotPet.isRunning = true;
+  }
+  else
+  {
+
+    robotPet.isRunning = false;
+  }
   button.update();
+  ble.update();
+  robotPet.update();
 }
 
 void scanI2C()
@@ -77,4 +118,21 @@ void scanI2C()
       Serial.println(address, HEX);
     }
   }
+}
+
+void handleBLEMessage(String message)
+{
+
+  lastBLEMessageTime = millis();
+  isBLEMessageActive = true;
+
+  Serial.print("[BLE Message] ");
+  Serial.println(message);
+
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.println(message);
+  display.display();
 }
