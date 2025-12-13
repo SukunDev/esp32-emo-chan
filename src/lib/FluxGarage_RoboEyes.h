@@ -41,14 +41,14 @@ uint8_t MAINCOLOR = 1; // drawings
 #define OFF 0
 
 // For switch "predefined positions"
-#define N 1  // north, top center
-#define NE 2 // north-east, top right
-#define E 3  // east, middle right
-#define SE 4 // south-east, bottom right
-#define S 5  // south, bottom center
-#define SW 6 // south-west, bottom left
-#define W 7  // west, middle left
-#define NW 8 // north-west, top left
+#define NORTH 1      // north, top center
+#define NORTH_EAST 2 // north-east, top right
+#define EAST 3       // east, middle right
+#define SOUTH_EAST 4 // south-east, bottom right
+#define SOUTH 5      // south, bottom center
+#define SOUTH_WEST 6 // south-west, bottom left
+#define WEST 7       // west, middle left
+#define NORTH_WEST 8 // north-west, top left
 // for middle center set "DEFAULT"
 
 // Constructor: takes a reference to the active Adafruit display object (e.g., Adafruit_SSD1327)
@@ -316,42 +316,42 @@ public:
   {
     switch (position)
     {
-    case N:
+    case NORTH:
       // North, top center
       eyeLxNext = getScreenConstraint_X() / 2;
       eyeLyNext = 0;
       break;
-    case NE:
+    case NORTH_EAST:
       // North-east, top right
       eyeLxNext = getScreenConstraint_X();
       eyeLyNext = 0;
       break;
-    case E:
+    case EAST:
       // East, middle right
       eyeLxNext = getScreenConstraint_X();
       eyeLyNext = getScreenConstraint_Y() / 2;
       break;
-    case SE:
+    case SOUTH_EAST:
       // South-east, bottom right
       eyeLxNext = getScreenConstraint_X();
       eyeLyNext = getScreenConstraint_Y();
       break;
-    case S:
+    case SOUTH:
       // South, bottom center
       eyeLxNext = getScreenConstraint_X() / 2;
       eyeLyNext = getScreenConstraint_Y();
       break;
-    case SW:
+    case SOUTH_WEST:
       // South-west, bottom left
       eyeLxNext = 0;
       eyeLyNext = getScreenConstraint_Y();
       break;
-    case W:
+    case WEST:
       // West, middle left
       eyeLxNext = 0;
       eyeLyNext = getScreenConstraint_Y() / 2;
       break;
-    case NW:
+    case NORTH_WEST:
       // North-west, top left
       eyeLxNext = 0;
       eyeLyNext = 0;

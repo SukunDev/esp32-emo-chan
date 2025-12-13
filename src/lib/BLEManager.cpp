@@ -37,7 +37,7 @@ void MyBLEServerCallbacks::onConnect(BLEServer *pServer)
   delay(10);
   manager->setDeviceConnected(true);
   manager->lastEventTime = millis();
-  
+
   // Call callback jika sudah di-set
   if (manager->onConnectCallback)
   {
@@ -49,7 +49,7 @@ void MyBLEServerCallbacks::onDisconnect(BLEServer *pServer)
 {
   delay(10);
   manager->setDeviceConnected(false);
-  
+
   // Call callback jika sudah di-set
   if (manager->onDisconnectCallback)
   {
@@ -106,7 +106,7 @@ void BLEManager::begin(const char *deviceName)
   pSecurity->setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
 
   // Set MTU
-  BLEDevice::setMTU(247);
+  BLEDevice::setMTU(517);
 
   pServer = BLEDevice::createServer();
 
@@ -141,7 +141,7 @@ void BLEManager::begin(const char *deviceName)
 
   // Set device name di GAP (Generic Access Profile)
   BLEDevice::setEncryptionLevel(ESP_BLE_SEC_ENCRYPT);
-  
+
   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(serviceUUID);
   pAdvertising->setScanResponse(true);
@@ -158,7 +158,7 @@ void BLEManager::update()
   // Handle disconnection
   if (!deviceConnected && oldDeviceConnected)
   {
-    delay(500); // Give the bluetooth stack the chance to get things ready
+    delay(500);                  // Give the bluetooth stack the chance to get things ready
     pServer->startAdvertising(); // Restart advertising
     oldDeviceConnected = deviceConnected;
   }
@@ -186,7 +186,7 @@ void BLEManager::sendData(String data)
       deviceConnected = false;
       return;
     }
-    
+
     pCharacteristic->setValue(data.c_str());
     pCharacteristic->notify();
   }
@@ -200,13 +200,13 @@ void BLEManager::setDeviceConnected(bool connected)
 void BLEManager::handleEvent(String event)
 {
   lastEventTime = millis();
-  
+
   // Call callback jika sudah di-set
   if (onMessageCallback)
   {
     onMessageCallback(event);
   }
-  
+
   // Auto response untuk ping (optional)
   if (event == "ping" || event.startsWith("ping:"))
   {
@@ -228,4 +228,3 @@ void BLEManager::setOnDisconnectCallback(std::function<void()> callback)
 {
   onDisconnectCallback = callback;
 }
-

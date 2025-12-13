@@ -161,7 +161,7 @@ private:
   {
     currentState = Asleep;
     roboEyes.setMood(DEFAULT);
-    roboEyes.setPosition(S);
+    roboEyes.setPosition(SOUTH);
     roboEyes.setHeight(3, 3);
     roboEyes.setAutoblinker(OFF);
     roboEyes.setIdleMode(OFF);
