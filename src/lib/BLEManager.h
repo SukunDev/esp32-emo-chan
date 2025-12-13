@@ -6,7 +6,6 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
-#include <BLESecurity.h>
 #include <functional>
 
 class BLEManager;
@@ -29,7 +28,6 @@ private:
 
 public:
   MyBLECharacteristicCallbacks(BLEManager *mgr);
-  void onRead(BLECharacteristic *pCharacteristic);
   void onWrite(BLECharacteristic *pCharacteristic);
 };
 
@@ -40,14 +38,9 @@ private:
   BLEService *pService;
   BLECharacteristic *pCharacteristic;
   bool deviceConnected;
-  bool oldDeviceConnected;
   MyBLEServerCallbacks *pCallbacks;
   MyBLECharacteristicCallbacks *pCharCallbacks;
-  
-  // Last event time untuk tracking
-  unsigned long lastEventTime;
-  
-  // Callback functions
+
   std::function<void(String)> onMessageCallback;
   std::function<void()> onConnectCallback;
   std::function<void()> onDisconnectCallback;
@@ -58,19 +51,15 @@ private:
 public:
   BLEManager();
   void begin(const char *deviceName);
-  void update();
   bool isConnected();
   void sendData(String data);
-  
-  // Callback setters
+
   void setOnMessageCallback(std::function<void(String)> callback);
   void setOnConnectCallback(std::function<void()> callback);
   void setOnDisconnectCallback(std::function<void()> callback);
-  
-  // Internal methods untuk callback
+
   void setDeviceConnected(bool connected);
-  void handleEvent(String event);
+  void handleMessage(String message);
 };
 
 #endif
-

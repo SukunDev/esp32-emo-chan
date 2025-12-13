@@ -106,7 +106,6 @@ void loop()
       (now >= lastVisualizerUpdate) ? (now - lastVisualizerUpdate) : 0;
 
   button.update();
-  ble.update();
 
   if (isVisualizerMode)
   {
