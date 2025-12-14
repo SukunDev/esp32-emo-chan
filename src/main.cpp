@@ -32,7 +32,7 @@ SoundPlayer melody(BUZZER_PIN);
 ButtonManager button(BUTTON_PIN);
 BLEManager ble;
 RobotPet robotPet(display, melody, motor, SCREEN_WIDTH, SCREEN_HEIGHT, 100);
-MediaVisualizer visualizer(display);
+MediaVisualizer visualizer(display, FPS_30);
 
 bool isBLEConnected = false;
 bool isVisualizerMode = false;
