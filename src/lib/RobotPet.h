@@ -28,7 +28,7 @@ private:
     Sleepy,
     Asleep,
     Angry
-  } currentState;
+  } currentEyeState;
 
   enum MotorState
   {
@@ -69,13 +69,13 @@ private:
 
   void enterDefaultState()
   {
-    currentState = Default;
+    currentEyeState = Default;
     setDefaultState();
   }
 
   void enterHappyState()
   {
-    currentState = Happy;
+    currentEyeState = Happy;
     roboEyes.setMood(HAPPY);
     roboEyes.setWidth(32, 32);
     roboEyes.setHeight(36, 36);
@@ -88,7 +88,7 @@ private:
 
   void enterLongHappyState()
   {
-    currentState = LongHappy;
+    currentEyeState = LongHappy;
     roboEyes.setMood(HAPPY);
     roboEyes.setWidth(32, 32);
     roboEyes.setHeight(36, 36);
@@ -101,7 +101,7 @@ private:
 
   void enterScaredState()
   {
-    currentState = Scared;
+    currentEyeState = Scared;
     roboEyes.setMood(TIRED);
     roboEyes.setWidth(32, 32);
     roboEyes.setHeight(36, 36);
@@ -116,7 +116,7 @@ private:
 
   void enterScareState()
   {
-    currentState = Scare;
+    currentEyeState = Scare;
     roboEyes.setMood(TIRED);
     roboEyes.setWidth(32, 32);
     roboEyes.setHeight(36, 36);
@@ -131,7 +131,7 @@ private:
 
   void enterCuriosityState()
   {
-    currentState = Curiosity;
+    currentEyeState = Curiosity;
     roboEyes.setMood(DEFAULT);
     roboEyes.setWidth(32, 32);
     roboEyes.setHeight(36, 36);
@@ -147,7 +147,7 @@ private:
 
   void enterSleepyState()
   {
-    currentState = Sleepy;
+    currentEyeState = Sleepy;
     roboEyes.setMood(TIRED);
     roboEyes.setHeight(20, 20);
     roboEyes.setPosition(DEFAULT);
@@ -159,7 +159,7 @@ private:
 
   void enterAsleepState()
   {
-    currentState = Asleep;
+    currentEyeState = Asleep;
     roboEyes.setMood(DEFAULT);
     roboEyes.setPosition(SOUTH);
     roboEyes.setHeight(3, 3);
@@ -171,7 +171,7 @@ private:
 
   void enterAngryState()
   {
-    currentState = Angry;
+    currentEyeState = Angry;
     roboEyes.setMood(ANGRY);
     roboEyes.setWidth(32, 32);
     roboEyes.setHeight(36, 36);
@@ -188,7 +188,7 @@ public:
   RobotPet(Adafruit_SSD1306 &disp, SoundPlayer &buzzer, MotorManager &mtr, int width, int heigh, int delay)
       : display(disp), roboEyes(disp), melody(buzzer), motor(mtr),
         screenWidth(width), screenHeight(heigh), refreshDelay(delay),
-        currentState(Default), lastActionTime(0) {}
+        currentEyeState(Default), lastActionTime(0) {}
 
   void begin()
   {
@@ -212,7 +212,7 @@ public:
     unsigned long elapsed = now - lastActionTime;
     unsigned long motorElapsed = now - lastMotorActionTime;
 
-    switch (currentState)
+    switch (currentEyeState)
     {
     case Default:
       if (elapsed >= IDLE_DELAY)
@@ -317,7 +317,7 @@ public:
     Serial.print("Click: ");
     Serial.println(clickCount);
 
-    if ((currentState == Asleep || currentState == Sleepy))
+    if ((currentEyeState == Asleep || currentEyeState == Sleepy))
     {
       enterAngryState();
       motor.backward();
@@ -328,7 +328,7 @@ public:
 
     if (clickCount == 1)
     {
-      if ((currentState == Default || currentState == Curiosity))
+      if ((currentEyeState == Default || currentEyeState == Curiosity))
       {
         unsigned int randomChoice = random(1, 11);
         if (randomChoice > 7)
@@ -348,7 +348,7 @@ public:
 
     if (clickCount == 4)
     {
-      if (currentState != Scared)
+      if (currentEyeState != Scared)
       {
         enterScaredState();
         lastActionTime = millis();
@@ -362,7 +362,7 @@ public:
       return;
 
     Serial.println("LONG PRESS!");
-    if (currentState == Default || currentState == Curiosity)
+    if (currentEyeState == Default || currentEyeState == Curiosity)
     {
       enterLongHappyState();
       lastActionTime = millis();
@@ -375,7 +375,7 @@ public:
       return;
 
     Serial.println("LONG PRESS RELEASE!");
-    currentState = Happy;
+    currentEyeState = Happy;
   }
 
   void randomMotorMovement()

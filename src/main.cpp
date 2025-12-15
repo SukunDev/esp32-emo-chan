@@ -8,6 +8,7 @@
 #include "lib/ButtonManager.h"
 #include "lib/BLEManager.h"
 #include "lib/MediaVisualizer.h"
+#include "lib/NotificationManager.h"
 #include <ArduinoJson.h>
 
 #define SCREEN_WIDTH 128
@@ -26,6 +27,7 @@
 #define MOTOR_IN3 2
 #define MOTOR_IN4 3
 
+// Hardware instances
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 MotorManager motor(MOTOR_IN1, MOTOR_IN2, MOTOR_IN3, MOTOR_IN4);
 SoundPlayer melody(BUZZER_PIN);
@@ -33,14 +35,28 @@ ButtonManager button(BUTTON_PIN);
 BLEManager ble;
 RobotPet robotPet(display, melody, motor, SCREEN_WIDTH, SCREEN_HEIGHT, 100);
 MediaVisualizer visualizer(display, FPS_30);
+NotificationManager notification(display, 15000);
 
-bool isBLEConnected = false;
-bool isVisualizerMode = false;
-unsigned long lastVisualizerUpdate = 0;
-static const unsigned long VISUALIZER_TIMEOUT = 15000;
+// State machine
+enum CurrentState
+{
+  Animation,
+  Media,
+  Notification
+};
+CurrentState currentState = Animation;
+CurrentState previousState = Animation;
 
+// Media tracking - SIMPLIFIED
+unsigned long lastMediaActive = 0;
+static const unsigned long MEDIA_TIMEOUT = 5000; // 5 detik tanpa audio = kembali ke Animation
+static const float AUDIO_THRESHOLD = 0.01f;      // Minimum amplitude untuk dianggap "ada audio"
+
+// Function declarations
 void handleBLEMessage(String message);
 void scanI2C();
+void switchState(CurrentState newState);
+void updateCurrentState();
 
 void setup()
 {
@@ -53,147 +69,211 @@ void setup()
   button.begin();
   button.addClickCallback([](int count)
                           { 
-                            if (!isVisualizerMode) {
-                              robotPet.shortClick(count); 
-                            } });
+    if (currentState == Animation) robotPet.shortClick(count); });
   button.addLongPressCallback([]()
                               { 
-                                if (!isVisualizerMode) {
-                                  robotPet.longClick(); 
-                                } });
+    if (currentState == Animation) robotPet.longClick(); });
   button.addLongPressReleaseCallback([]()
                                      { 
-                                       if (!isVisualizerMode) {
-                                         robotPet.longClickRelease(); 
-                                       } });
+    if (currentState == Animation) robotPet.longClickRelease(); });
 
   if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS))
   {
-    Serial.println("SSD1306 Failed");
+    Serial.println("[Display] Failed!");
     while (1)
       ;
   }
 
   robotPet.begin();
   visualizer.begin();
+  notification.begin();
 
   ble.setOnMessageCallback([](String message)
                            { handleBLEMessage(message); });
-
   ble.setOnConnectCallback([]()
-                           {
-    Serial.println("[BLE] Connected!");
-    isBLEConnected = true; });
-
+                           { Serial.println("[BLE] Connected"); });
   ble.setOnDisconnectCallback([]()
                               {
-    Serial.println("[BLE] Disconnected!");
-    isBLEConnected = false;
-    isVisualizerMode = false;
-    robotPet.isRunning = true; });
+    Serial.println("[BLE] Disconnected");
+    switchState(Animation); });
 
   ble.begin("PetRobot-c3");
-  Serial.println("[BLE] BLE Manager initialized");
-
   display.clearDisplay();
   display.display();
 }
 
 void loop()
 {
-  unsigned long now = millis();
-  unsigned long elapsedVisualizer =
-      (now >= lastVisualizerUpdate) ? (now - lastVisualizerUpdate) : 0;
-
   button.update();
+  updateCurrentState();
+}
 
-  if (isVisualizerMode)
+void switchState(CurrentState newState)
+{
+  if (currentState == newState)
+    return;
+
+  // Simpan state sebelumnya (kecuali saat masuk Notification)
+  if (newState != Notification)
   {
-
-    visualizer.update();
-
-    if (elapsedVisualizer >= VISUALIZER_TIMEOUT)
-    {
-      Serial.print("[Visualizer] ");
-      Serial.print(elapsedVisualizer);
-      Serial.print(" | ");
-      Serial.print(VISUALIZER_TIMEOUT);
-      Serial.print(" | ");
-      Serial.print(elapsedVisualizer >= VISUALIZER_TIMEOUT);
-      Serial.print(" | ");
-      Serial.println("Timeout - returning to robot pet mode");
-      isVisualizerMode = false;
-      visualizer.stop();
-      robotPet.isRunning = true;
-    }
+    previousState = currentState;
   }
-  else
-  {
 
+  // Keluar dari state lama
+  if (currentState == Animation)
+  {
+    robotPet.isRunning = false;
+  }
+  else if (currentState == Media)
+  {
+    visualizer.stop();
+  }
+
+  Serial.print("[State] ");
+  Serial.print(currentState == Animation ? "Animation" : currentState == Media ? "Media"
+                                                                               : "Notification");
+  Serial.print(" -> ");
+  Serial.println(newState == Animation ? "Animation" : newState == Media ? "Media"
+                                                                         : "Notification");
+
+  currentState = newState;
+
+  // Masuk ke state baru
+  if (currentState == Animation)
+  {
+    robotPet.isRunning = true;
+  }
+  else if (currentState == Media)
+  {
+    lastMediaActive = millis();
+  }
+}
+
+void updateCurrentState()
+{
+  unsigned long now = millis();
+  unsigned long elapsedMediaActive =
+      (now >= lastMediaActive) ? (now - lastMediaActive) : 0;
+  switch (currentState)
+  {
+  case Animation:
     robotPet.update();
+    break;
+
+  case Media:
+    visualizer.update();
+    // Auto-timeout jika tidak ada audio dalam waktu tertentu
+    if (elapsedMediaActive > MEDIA_TIMEOUT)
+    {
+      Serial.println("[Media] Timeout - no audio detected");
+      switchState(Animation);
+    }
+    break;
+
+  case Notification:
+    notification.update();
+
+    if (notification.isExpired())
+    {
+      Serial.println("[Notification] Expired");
+      switchState(previousState);
+    }
+    break;
   }
 }
 
 void scanI2C()
 {
-  Serial.println("Scanning I2C devices...");
-  for (byte address = 1; address < 127; address++)
+  Serial.println("[I2C] Scanning...");
+  for (byte addr = 1; addr < 127; addr++)
   {
-    Wire.beginTransmission(address);
+    Wire.beginTransmission(addr);
     if (Wire.endTransmission() == 0)
     {
-      Serial.print("Found device at 0x");
-      Serial.println(address, HEX);
+      Serial.print("[I2C] Found: 0x");
+      Serial.println(addr, HEX);
     }
   }
 }
 
 void handleBLEMessage(String message)
 {
+  // Clean message
   if (message.startsWith("\"") && message.endsWith("\""))
   {
     message = message.substring(1, message.length() - 1);
   }
   message.replace("\\\"", "\"");
 
+  // Parse JSON
   JsonDocument doc;
-  DeserializationError err = deserializeJson(doc, message);
-
-  if (err)
+  if (deserializeJson(doc, message))
   {
-    Serial.print("[JSON Error] ");
-    Serial.println(err.c_str());
+    Serial.println("[JSON] Parse error");
     return;
   }
 
   const char *type = doc["type"] | "";
 
-  bool isMedia = strcmp(type, "media") == 0;
-
-  if (isMedia)
+  // ============================================
+  // NOTIFICATION - Priority tertinggi, interrupt apapun
+  // ============================================
+  if (strcmp(type, "notification") == 0)
   {
-
-    if (!isVisualizerMode)
+    if (currentState != Notification)
     {
-      Serial.println("[Mode] Switching to Visualizer Mode");
-      isVisualizerMode = true;
-      robotPet.isRunning = false;
+      previousState = currentState;
+    }
+    switchState(Notification);
+    notification.show(doc);
+    return;
+  }
+
+  // ============================================
+  // MEDIA - Hanya proses jika ada audio aktif
+  // ============================================
+  if (strcmp(type, "media") == 0)
+  {
+    // Jangan ganggu notification
+    if (currentState == Notification)
+    {
+      previousState = Media; // Set agar kembali ke Media setelah notif
+      return;
     }
 
-    visualizer.handleMediaData(doc);
+    // Cek apakah ada audio
+    if (doc["audio_amplitude"].is<JsonObject>())
+    {
+      float amplitude = doc["audio_amplitude"]["amplitude"] | 0.0f;
 
-    lastVisualizerUpdate = millis();
+      // Ada audio aktif
+      if (amplitude > AUDIO_THRESHOLD)
+      {
+        // Switch ke Media jika belum
+        if (currentState != Media)
+        {
+          switchState(Media);
+        }
+
+        // Update visualizer dan reset timeout
+        visualizer.handleMediaData(doc);
+        lastMediaActive = millis();
+      }
+      // Amplitude rendah/0 - biarkan timeout handle
+    }
 
     return;
   }
 
-  if (!isVisualizerMode)
+  // Message lain - tampilkan jika di Animation
+  if (currentState == Animation)
   {
     display.clearDisplay();
     display.setCursor(0, 0);
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
-    display.println(message);
+    display.println("Message:");
+    display.println(message.substring(0, 100));
     display.display();
   }
 }
