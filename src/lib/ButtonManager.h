@@ -20,7 +20,6 @@ private:
   const unsigned long multiClickDelay = 300;
   const unsigned long longPressTime = 800;
 
-  // MULTI CALLBACKS
   std::vector<std::function<void(int)>> clickCallbacks;
   std::vector<std::function<void()>> longPressCallbacks;
   std::vector<std::function<void()>> longPressReleaseCallbacks;
@@ -30,7 +29,6 @@ public:
   void begin();
   void update();
 
-  // ADD CALLBACKS
   void addClickCallback(std::function<void(int)> cb);
   void addLongPressCallback(std::function<void()> cb);
   void addLongPressReleaseCallback(std::function<void()> cb);

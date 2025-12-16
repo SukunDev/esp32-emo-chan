@@ -182,7 +182,6 @@ private:
   }
 
 public:
-  // === PUBLIC VARIABLE UNTUK STOP SEMUA AKSI ===
   bool isRunning = true;
 
   RobotPet(Adafruit_SSD1306 &disp, SoundPlayer &buzzer, MotorManager &mtr, int width, int heigh, int delay)
@@ -202,7 +201,6 @@ public:
 
   void update()
   {
-    // === GLOBAL STOP ===
     if (!isRunning)
     {
       return;

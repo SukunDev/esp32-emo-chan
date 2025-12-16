@@ -1,6 +1,5 @@
 #include "MediaVisualizer.h"
 
-// Constructor
 MediaVisualizer::MediaVisualizer(Adafruit_SSD1306 &disp, FrameRate frameRate)
     : display(disp),
       currentAmplitude(0),
@@ -16,10 +15,9 @@ MediaVisualizer::MediaVisualizer(Adafruit_SSD1306 &disp, FrameRate frameRate)
       isActive(false),
       targetFrameRate(frameRate)
 {
-  // Calculate update interval based on frame rate
+
   updateInterval = 1000 / targetFrameRate;
 
-  // Initialize arrays
   for (int i = 0; i < NUM_BARS; i++)
   {
     barHeights[i] = 0;
@@ -30,7 +28,6 @@ MediaVisualizer::MediaVisualizer(Adafruit_SSD1306 &disp, FrameRate frameRate)
   }
 }
 
-// Initialize
 void MediaVisualizer::begin()
 {
   mediaTitle = "";
@@ -41,7 +38,6 @@ void MediaVisualizer::begin()
   isActive = false;
 }
 
-// Check if metadata is valid
 bool MediaVisualizer::checkValidMetadata()
 {
   bool hasTitle = (mediaTitle.length() > 0 && mediaTitle != "Unknown");
@@ -49,25 +45,21 @@ bool MediaVisualizer::checkValidMetadata()
   return hasTitle || hasArtist;
 }
 
-// Get visualizer height based on display mode
 int MediaVisualizer::getVisualizerHeight()
 {
   return hasValidMetadata ? VISUALIZER_HEIGHT_WITH_METADATA : VISUALIZER_HEIGHT_FULLSCREEN;
 }
 
-// Get visualizer Y start position
 int MediaVisualizer::getVisualizerYStart()
 {
   return hasValidMetadata ? VISUALIZER_Y_START_WITH_METADATA : VISUALIZER_Y_START_FULLSCREEN;
 }
 
-// Draw metadata section (title, artist, status)
 void MediaVisualizer::drawMetadata()
 {
   if (!hasValidMetadata)
     return;
 
-  // Draw status indicator (play/pause icon)
   if (isPlaying)
   {
     display.fillTriangle(2, 2, 2, 8, 7, 5, SSD1306_WHITE);
@@ -84,7 +76,6 @@ void MediaVisualizer::drawMetadata()
 
   int availableWidth = SCREEN_WIDTH - TEXT_MARGIN_LEFT - 2;
 
-  // Title
   if (mediaTitle.length() > 0 && mediaTitle != "Unknown")
   {
     String displayTitle = mediaTitle;
@@ -121,7 +112,6 @@ void MediaVisualizer::drawMetadata()
     }
   }
 
-  // Artist
   if (mediaArtist.length() > 0 && mediaArtist != "Unknown")
   {
     int artistWidth = mediaArtist.length() * 6;
@@ -149,7 +139,6 @@ void MediaVisualizer::drawMetadata()
   display.setTextWrap(true);
 }
 
-// Draw audio visualizer bars
 void MediaVisualizer::drawVisualizer()
 {
   int visualizerHeight = getVisualizerHeight();
@@ -162,12 +151,10 @@ void MediaVisualizer::drawVisualizer()
   {
     int x = i * barWidth;
 
-    // Smooth bar animation
     float diff = barTargets[i] - barHeights[i];
     barVelocities[i] = barVelocities[i] * 0.7 + diff * 0.3;
     barHeights[i] += barVelocities[i];
 
-    // Clamp values
     if (barHeights[i] < 0)
       barHeights[i] = 0;
     if (barHeights[i] > visualizerHeight)
@@ -176,19 +163,16 @@ void MediaVisualizer::drawVisualizer()
     int barHeight = (int)barHeights[i];
     int y = visualizerYStart + (visualizerHeight - barHeight);
 
-    // Draw bar
     if (barHeight > 0)
     {
       display.fillRect(x, y, actualBarWidth, barHeight, SSD1306_WHITE);
     }
 
-    // Draw peak indicator
     if (peakPositions[i] > 0)
     {
       int peakY = visualizerYStart + (visualizerHeight - peakPositions[i]);
       display.drawFastHLine(x, peakY, actualBarWidth, SSD1306_WHITE);
 
-      // Peak decay
       if (millis() - peakTimers[i] > 50)
       {
         peakPositions[i]--;
@@ -196,7 +180,6 @@ void MediaVisualizer::drawVisualizer()
       }
     }
 
-    // Update peak if current bar is higher
     if (barHeight > peakPositions[i])
     {
       peakPositions[i] = barHeight;
@@ -205,7 +188,6 @@ void MediaVisualizer::drawVisualizer()
   }
 }
 
-// Update scrolling text animation
 void MediaVisualizer::updateScrolling()
 {
   if (!hasValidMetadata)
@@ -232,7 +214,6 @@ void MediaVisualizer::updateScrolling()
   }
 }
 
-// Generate bar target heights based on audio amplitude
 void MediaVisualizer::generateBarTargets()
 {
   int visualizerHeight = getVisualizerHeight();
@@ -255,7 +236,6 @@ void MediaVisualizer::generateBarTargets()
   }
 }
 
-// Set frame rate
 void MediaVisualizer::setFrameRate(FrameRate frameRate)
 {
   targetFrameRate = frameRate;
@@ -265,13 +245,11 @@ void MediaVisualizer::setFrameRate(FrameRate frameRate)
   Serial.println(" fps");
 }
 
-// Get current frame rate
 FrameRate MediaVisualizer::getFrameRate()
 {
   return targetFrameRate;
 }
 
-// Handle incoming media data from BLE
 void MediaVisualizer::handleMediaData(JsonDocument &doc)
 {
   const char *type = doc["type"];
@@ -289,10 +267,8 @@ void MediaVisualizer::handleMediaData(JsonDocument &doc)
     mediaStatus = doc["status"] | "";
     isPlaying = doc["is_playing"] | false;
 
-    // Update metadata validity flag
     hasValidMetadata = checkValidMetadata();
 
-    // Reset scroll positions only when media changes
     if (titleChanged)
     {
       titleScrollPos = 0;
@@ -303,7 +279,6 @@ void MediaVisualizer::handleMediaData(JsonDocument &doc)
       artistScrollPos = 0;
     }
 
-    // Handle audio amplitude
     bool hasAmplitude = false;
     if (doc["audio_amplitude"].is<JsonObject>())
     {
@@ -316,13 +291,11 @@ void MediaVisualizer::handleMediaData(JsonDocument &doc)
       hasAmplitude = (currentAmplitude > 0.0f || peakValue > 0.0f);
     }
 
-    // Activate visualizer if there's amplitude OR valid metadata
     if (hasAmplitude || hasValidMetadata)
     {
       isActive = true;
     }
 
-    // Log only on significant changes
     if (titleChanged || artistChanged)
     {
       Serial.println("=== Media Updated ===");
@@ -335,7 +308,6 @@ void MediaVisualizer::handleMediaData(JsonDocument &doc)
   }
 }
 
-// Main update loop
 void MediaVisualizer::update()
 {
   if (!isActive)
@@ -343,7 +315,6 @@ void MediaVisualizer::update()
 
   unsigned long now = millis();
 
-  // Check amplitude timeout
   if (now - lastAmplitudeReceived > AMPLITUDE_TIMEOUT)
   {
     currentAmplitude = 0;
@@ -355,15 +326,13 @@ void MediaVisualizer::update()
   {
     display.clearDisplay();
 
-    // Display metadata only if valid
     if (hasValidMetadata)
     {
       drawMetadata();
-      // Draw separator line
+
       display.drawFastHLine(0, 19, SCREEN_WIDTH, SSD1306_WHITE);
     }
 
-    // Generate visualizer targets
     if (currentAmplitude > 0.01 || peakValue > 0.01)
     {
       generateBarTargets();
@@ -374,7 +343,7 @@ void MediaVisualizer::update()
     }
     else
     {
-      // Fade out
+
       for (int i = 0; i < NUM_BARS; i++)
       {
         barTargets[i] *= 0.95;
@@ -389,7 +358,6 @@ void MediaVisualizer::update()
   }
 }
 
-// Stop visualizer
 void MediaVisualizer::stop()
 {
   isActive = false;
@@ -397,26 +365,22 @@ void MediaVisualizer::stop()
   display.display();
 }
 
-// Check if visualizer is active
 bool MediaVisualizer::isVisualizerActive()
 {
   return isActive;
 }
 
-// Set amplitude manually
 void MediaVisualizer::setAmplitude(float amplitude)
 {
   currentAmplitude = constrain(amplitude, 0.0f, 1.0f);
   lastAmplitudeReceived = millis();
 }
 
-// Set peak value manually
 void MediaVisualizer::setPeak(float peak)
 {
   peakValue = constrain(peak, 0.0f, 1.0f);
 }
 
-// Activate visualizer in fullscreen mode (without metadata)
 void MediaVisualizer::activateVisualizerOnly()
 {
   hasValidMetadata = false;

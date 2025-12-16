@@ -5,7 +5,6 @@
 #include <Adafruit_SSD1306.h>
 #include <ArduinoJson.h>
 
-// Frame rate configuration
 enum FrameRate
 {
   FPS_30 = 30,
@@ -17,35 +16,29 @@ class MediaVisualizer
 private:
   Adafruit_SSD1306 &display;
 
-  // Media metadata
   String mediaTitle;
   String mediaArtist;
   String mediaStatus;
   bool isPlaying;
   bool hasValidMetadata;
 
-  // Audio amplitude data
   float currentAmplitude;
   float peakValue;
   float rmsValue;
 
-  // Visualizer bars
   static const int NUM_BARS = 16;
   float barHeights[NUM_BARS];
   float barTargets[NUM_BARS];
   float barVelocities[NUM_BARS];
 
-  // Peak indicators
   int peakPositions[NUM_BARS];
   unsigned long peakTimers[NUM_BARS];
 
-  // Scrolling text
   int titleScrollPos;
   int artistScrollPos;
   unsigned long lastScrollTime;
   static const unsigned long SCROLL_DELAY = 100;
 
-  // Display dimensions
   const int SCREEN_WIDTH = 128;
   const int SCREEN_HEIGHT = 64;
   const int METADATA_HEIGHT = 20;
@@ -55,7 +48,6 @@ private:
   const int VISUALIZER_Y_START_FULLSCREEN = 0;
   const int TEXT_MARGIN_LEFT = 12;
 
-  // Animation & Frame Rate
   FrameRate targetFrameRate;
   unsigned long updateInterval;
   unsigned long lastUpdateTime;
@@ -65,7 +57,6 @@ private:
 
   bool isActive;
 
-  // Private helper methods
   bool checkValidMetadata();
   int getVisualizerHeight();
   int getVisualizerYStart();

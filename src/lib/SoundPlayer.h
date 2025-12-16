@@ -18,7 +18,7 @@ public:
     {
       char noteChar = *p++;
       if (noteChar < 'A' || noteChar > 'G')
-        continue; // skip non-note
+        continue;
 
       int octave = (*p >= '0' && *p <= '9') ? (*p++ - '0') : 5;
 
@@ -50,15 +50,14 @@ private:
   int noteToFreq(char note, int octave)
   {
     static const int baseFreq[] = {
-        0,   // placeholder
-        262, // C4
-        294, // D4
-        330, // E4
-        349, // F4
-        392, // G4
-        440, // A4
-        494  // B4
-    };
+        0,
+        262,
+        294,
+        330,
+        349,
+        392,
+        440,
+        494};
 
     int index = (note - 'A' + 1);
     if (index < 1 || index > 7)
@@ -66,7 +65,6 @@ private:
 
     float freq = baseFreq[index];
 
-    // adjust octave
     int diff = octave - 4;
     while (diff > 0)
     {

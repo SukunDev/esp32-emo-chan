@@ -27,7 +27,6 @@
 #define MOTOR_IN3 2
 #define MOTOR_IN4 3
 
-// Hardware instances
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 MotorManager motor(MOTOR_IN1, MOTOR_IN2, MOTOR_IN3, MOTOR_IN4);
 SoundPlayer melody(BUZZER_PIN);
@@ -37,7 +36,6 @@ RobotPet robotPet(display, melody, motor, SCREEN_WIDTH, SCREEN_HEIGHT, 100);
 MediaVisualizer visualizer(display, FPS_30);
 NotificationManager notification(display, 15000);
 
-// State machine
 enum CurrentState
 {
   Animation,
@@ -47,12 +45,10 @@ enum CurrentState
 CurrentState currentState = Animation;
 CurrentState previousState = Animation;
 
-// Media tracking - SIMPLIFIED
 unsigned long lastMediaActive = 0;
-static const unsigned long MEDIA_TIMEOUT = 5000; // 5 detik tanpa audio = kembali ke Animation
-static const float AUDIO_THRESHOLD = 0.01f;      // Minimum amplitude untuk dianggap "ada audio"
+static const unsigned long MEDIA_TIMEOUT = 5000;
+static const float AUDIO_THRESHOLD = 0.01f;
 
-// Function declarations
 void handleBLEMessage(String message);
 void scanI2C();
 void switchState(CurrentState newState);
@@ -113,13 +109,11 @@ void switchState(CurrentState newState)
   if (currentState == newState)
     return;
 
-  // Simpan state sebelumnya (kecuali saat masuk Notification)
   if (newState != Notification)
   {
     previousState = currentState;
   }
 
-  // Keluar dari state lama
   if (currentState == Animation)
   {
     robotPet.isRunning = false;
@@ -138,7 +132,6 @@ void switchState(CurrentState newState)
 
   currentState = newState;
 
-  // Masuk ke state baru
   if (currentState == Animation)
   {
     robotPet.isRunning = true;
@@ -162,7 +155,7 @@ void updateCurrentState()
 
   case Media:
     visualizer.update();
-    // Auto-timeout jika tidak ada audio dalam waktu tertentu
+
     if (elapsedMediaActive > MEDIA_TIMEOUT)
     {
       Serial.println("[Media] Timeout - no audio detected");
@@ -198,14 +191,13 @@ void scanI2C()
 
 void handleBLEMessage(String message)
 {
-  // Clean message
+
   if (message.startsWith("\"") && message.endsWith("\""))
   {
     message = message.substring(1, message.length() - 1);
   }
   message.replace("\\\"", "\"");
 
-  // Parse JSON
   JsonDocument doc;
   if (deserializeJson(doc, message))
   {
@@ -215,9 +207,6 @@ void handleBLEMessage(String message)
 
   const char *type = doc["type"] | "";
 
-  // ============================================
-  // NOTIFICATION - Priority tertinggi, interrupt apapun
-  // ============================================
   if (strcmp(type, "notification") == 0)
   {
     if (currentState != Notification)
@@ -229,43 +218,35 @@ void handleBLEMessage(String message)
     return;
   }
 
-  // ============================================
-  // MEDIA - Hanya proses jika ada audio aktif
-  // ============================================
   if (strcmp(type, "media") == 0)
   {
-    // Jangan ganggu notification
+
     if (currentState == Notification)
     {
-      previousState = Media; // Set agar kembali ke Media setelah notif
+      previousState = Media;
       return;
     }
 
-    // Cek apakah ada audio
     if (doc["audio_amplitude"].is<JsonObject>())
     {
       float amplitude = doc["audio_amplitude"]["amplitude"] | 0.0f;
 
-      // Ada audio aktif
       if (amplitude > AUDIO_THRESHOLD)
       {
-        // Switch ke Media jika belum
+
         if (currentState != Media)
         {
           switchState(Media);
         }
 
-        // Update visualizer dan reset timeout
         visualizer.handleMediaData(doc);
         lastMediaActive = millis();
       }
-      // Amplitude rendah/0 - biarkan timeout handle
     }
 
     return;
   }
 
-  // Message lain - tampilkan jika di Animation
   if (currentState == Animation)
   {
     display.clearDisplay();

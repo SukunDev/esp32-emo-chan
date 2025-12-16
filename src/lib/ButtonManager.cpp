@@ -36,13 +36,11 @@ void ButtonManager::update()
   bool reading = digitalRead(pin);
   unsigned long now = millis();
 
-  // Debounce
   if (reading != lastState)
   {
     lastChangeTime = now;
     lastState = reading;
 
-    // When pressed start timing
     if (reading == HIGH)
     {
       buttonDownTime = now;
@@ -51,26 +49,22 @@ void ButtonManager::update()
     }
   }
 
-  // Release detection (HIGH → LOW)
   if (reading == LOW && (now - lastChangeTime) > debounceDelay)
   {
-    // If long press was active → fire long press release
     if (longPressActive)
     {
       onLongPressRelease();
       longPressActive = false;
       buttonDownTime = 0;
-      return; // prevent click logic
+      return;
     }
 
-    // Normal short/multi click
     if (buttonDownTime > 0 && !longPressFired)
       clickCount++;
 
     buttonDownTime = 0;
   }
 
-  // Long press detection
   if (reading == HIGH &&
       buttonDownTime > 0 &&
       !longPressFired &&
@@ -82,7 +76,6 @@ void ButtonManager::update()
     onLongPress();
   }
 
-  // Multi-click dispatch
   if (clickCount > 0 &&
       (now - lastChangeTime) > multiClickDelay)
   {
