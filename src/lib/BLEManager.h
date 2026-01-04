@@ -38,6 +38,7 @@ private:
   BLEService *pService;
   BLECharacteristic *pCharacteristic;
   bool deviceConnected;
+  bool bleEnabled;
   MyBLEServerCallbacks *pCallbacks;
   MyBLECharacteristicCallbacks *pCharCallbacks;
 
@@ -53,6 +54,11 @@ public:
   void begin(const char *deviceName);
   bool isConnected();
   void sendData(String data);
+
+  void turnOn();
+  void turnOff();
+
+  bool isEnabled();
 
   void setOnMessageCallback(std::function<void(String)> callback);
   void setOnConnectCallback(std::function<void()> callback);

@@ -16,6 +16,7 @@ private:
   MotorManager &motor;
 
   int screenWidth, screenHeight, refreshDelay;
+  bool isRunning;
 
   enum EyeState
   {
@@ -30,15 +31,6 @@ private:
     Angry
   } currentEyeState;
 
-  enum MotorState
-  {
-    Right,
-    Left,
-    Forward,
-    Backward,
-    Stop
-  } currentMotorState;
-
   static const unsigned long IDLE_DELAY = 5000;
   static const unsigned long DEEP_SLEEP_DELAY = 10000;
   static const unsigned long ANGRY_DURATION = 5000;
@@ -50,6 +42,13 @@ private:
   unsigned long lastActionTime;
   unsigned long lastMotorActionTime;
   unsigned long randomMotorInterval;
+
+  // Array untuk menyimpan riwayat gerakan
+  static const int MAX_MOVEMENT_HISTORY = 6;
+  int movementHistory[MAX_MOVEMENT_HISTORY];
+  int movementCount;
+  int leftCount;
+  int rightCount;
 
   void setDefaultState()
   {
@@ -181,13 +180,140 @@ private:
     Serial.println("CurrentState: Angry");
   }
 
-public:
-  bool isRunning = true;
+  void resetMovementHistory()
+  {
+    movementCount = 0;
+    leftCount = 0;
+    rightCount = 0;
+    for (int i = 0; i < MAX_MOVEMENT_HISTORY; i++)
+    {
+      movementHistory[i] = 0;
+    }
+    Serial.println("Movement history reset");
+  }
 
+  void addMovementToHistory(int movement)
+  {
+    movementHistory[movementCount] = movement;
+
+    if (movement == 3) // Left
+    {
+      leftCount++;
+    }
+    else if (movement == 4) // Right
+    {
+      rightCount++;
+    }
+
+    movementCount++;
+
+    // Print history untuk debugging
+    Serial.print("Movement history [");
+    Serial.print(movementCount);
+    Serial.print("/12]: ");
+    for (int i = 0; i < movementCount; i++)
+    {
+      if (movementHistory[i] == 1)
+        Serial.print("F");
+      else if (movementHistory[i] == 2)
+        Serial.print("B");
+      else if (movementHistory[i] == 3)
+        Serial.print("L");
+      else if (movementHistory[i] == 4)
+        Serial.print("R");
+      Serial.print(" ");
+    }
+    Serial.print(" | L:");
+    Serial.print(leftCount);
+    Serial.print(" R:");
+    Serial.println(rightCount);
+  }
+
+  bool canResetMovementHistory()
+  {
+    // Cek apakah sudah mencapai 12 gerakan DAN left/right seimbang
+    return (movementCount >= MAX_MOVEMENT_HISTORY && leftCount == rightCount);
+  }
+
+  void randomMotorMovement()
+  {
+    if (!isRunning)
+    {
+      motor.stop();
+      return;
+    }
+
+    // Cek apakah perlu reset
+    if (canResetMovementHistory())
+    {
+      Serial.println(">>> Balanced! Resetting history <<<");
+      resetMovementHistory();
+    }
+
+    // Tentukan pilihan gerakan berdasarkan kondisi left/right
+    unsigned int motorChoice;
+
+    if (movementCount >= MAX_MOVEMENT_HISTORY)
+    {
+      // Sudah 12 gerakan tapi belum seimbang
+      // Paksa pilih gerakan yang kurang
+      if (leftCount < rightCount)
+      {
+        motorChoice = 3; // Left
+        Serial.println("Force LEFT to balance");
+      }
+      else if (rightCount < leftCount)
+      {
+        motorChoice = 4; // Right
+        Serial.println("Force RIGHT to balance");
+      }
+      else
+      {
+        // Seharusnya tidak sampai sini karena sudah di-reset di atas
+        motorChoice = random(1, 5);
+      }
+    }
+    else
+    {
+      // Belum 12 gerakan, pilih random
+      motorChoice = random(1, 5);
+    }
+
+    // Eksekusi gerakan
+    switch (motorChoice)
+    {
+    case 1:
+      Serial.print("Motor: Forward");
+      motor.forward();
+      break;
+    case 2:
+      Serial.print("Motor: Backward");
+      motor.backward();
+      break;
+    case 3:
+      Serial.print("Motor: Left");
+      motor.left();
+      break;
+    case 4:
+      Serial.print("Motor: Right");
+      motor.right();
+      break;
+    }
+
+    // Simpan ke history
+    addMovementToHistory(motorChoice);
+
+    delay(75);
+    motor.stop();
+  }
+
+public:
   RobotPet(Adafruit_SSD1306 &disp, SoundPlayer &buzzer, MotorManager &mtr, int width, int heigh, int delay)
       : display(disp), roboEyes(disp), melody(buzzer), motor(mtr),
         screenWidth(width), screenHeight(heigh), refreshDelay(delay),
-        currentEyeState(Default), lastActionTime(0) {}
+        currentEyeState(Default), lastActionTime(0), lastMotorActionTime(0),
+        randomMotorInterval(0), isRunning(false), movementCount(0),
+        leftCount(0), rightCount(0) {}
 
   void begin()
   {
@@ -196,7 +322,39 @@ public:
     roboEyes.begin(screenWidth, screenHeight, refreshDelay);
     setDefaultState();
 
+    resetMovementHistory();
     lastActionTime = millis();
+    lastMotorActionTime = millis();
+    randomMotorInterval = random(1600, 10000);
+  }
+
+  void start()
+  {
+    if (isRunning)
+      return;
+
+    isRunning = true;
+    lastActionTime = millis();
+    lastMotorActionTime = millis();
+    randomMotorInterval = random(1600, 10000);
+
+    Serial.println("RobotPet: Started");
+  }
+
+  void stop()
+  {
+    if (!isRunning)
+      return;
+
+    isRunning = false;
+    motor.stop();
+
+    Serial.println("RobotPet: Stopped");
+  }
+
+  bool getRunningState()
+  {
+    return isRunning;
   }
 
   void update()
@@ -218,6 +376,8 @@ public:
         unsigned int randomChoice = random(1, 11);
         if (randomChoice > 8)
           enterSleepyState();
+        else if (randomChoice > 5)
+          enterHappyState();
         else
           enterCuriosityState();
 
@@ -267,10 +427,12 @@ public:
       if (elapsed >= CURIOSITY_DURATION)
       {
         unsigned int randomChoice = random(1, 11);
-        if (randomChoice > 7)
+        if (randomChoice > 8)
           enterSleepyState();
+        else if (randomChoice > 5)
+          enterHappyState();
         else
-          enterDefaultState();
+          enterCuriosityState();
 
         lastActionTime = now;
       }
@@ -300,6 +462,7 @@ public:
           enterDefaultState();
 
         lastActionTime = now;
+        lastMotorActionTime = now;
       }
       break;
     }
@@ -319,7 +482,7 @@ public:
     {
       enterAngryState();
       motor.backward();
-      delay(75);
+      delay(100);
       motor.stop();
       lastActionTime = millis();
     }
@@ -333,22 +496,13 @@ public:
         {
           enterAngryState();
           motor.backward();
-          delay(75);
+          delay(100);
           motor.stop();
         }
         else
         {
           enterHappyState();
         }
-        lastActionTime = millis();
-      }
-    }
-
-    if (clickCount == 4)
-    {
-      if (currentEyeState != Scared)
-      {
-        enterScaredState();
         lastActionTime = millis();
       }
     }
@@ -374,35 +528,6 @@ public:
 
     Serial.println("LONG PRESS RELEASE!");
     currentEyeState = Happy;
-  }
-
-  void randomMotorMovement()
-  {
-    if (!isRunning)
-    {
-      motor.stop();
-      return;
-    }
-
-    unsigned int motorChoice = random(1, 5);
-    switch (motorChoice)
-    {
-    case 1:
-      motor.forward();
-      break;
-    case 2:
-      motor.backward();
-      break;
-    case 3:
-      motor.left();
-      break;
-    case 4:
-      motor.right();
-      break;
-    }
-
-    delay(75);
-    motor.stop();
   }
 };
 

@@ -20,7 +20,11 @@ void MyBLEServerCallbacks::onDisconnect(BLEServer *pServer)
   {
     manager->onDisconnectCallback();
   }
-  pServer->startAdvertising();
+  // Hanya restart advertising jika BLE masih enabled
+  if (manager->isEnabled())
+  {
+    pServer->startAdvertising();
+  }
 }
 
 MyBLECharacteristicCallbacks::MyBLECharacteristicCallbacks(BLEManager *mgr) : manager(mgr)
@@ -43,6 +47,7 @@ BLEManager::BLEManager()
   pService = nullptr;
   pCharacteristic = nullptr;
   deviceConnected = false;
+  bleEnabled = false;
   pCallbacks = nullptr;
   pCharCallbacks = nullptr;
   onMessageCallback = nullptr;
@@ -82,6 +87,47 @@ void BLEManager::begin(const char *deviceName)
   pAdvertising->addServiceUUID(serviceUUID);
   pAdvertising->setScanResponse(true);
   BLEDevice::startAdvertising();
+
+  bleEnabled = true; // BLE aktif setelah begin()
+}
+
+void BLEManager::turnOn()
+{
+  if (!bleEnabled)
+  {
+    bleEnabled = true;
+
+    // Mulai advertising untuk menerima koneksi baru
+    if (pServer != nullptr)
+    {
+      BLEDevice::startAdvertising();
+      Serial.println("BLE: Advertising started");
+    }
+  }
+}
+
+void BLEManager::turnOff()
+{
+  if (bleEnabled)
+  {
+    bleEnabled = false;
+
+    // Putuskan koneksi yang ada
+    if (deviceConnected && pServer != nullptr)
+    {
+      pServer->disconnect(pServer->getConnId());
+      Serial.println("BLE: Connection disconnected");
+    }
+
+    // Hentikan advertising
+    BLEDevice::getAdvertising()->stop();
+    Serial.println("BLE: Advertising stopped");
+  }
+}
+
+bool BLEManager::isEnabled()
+{
+  return bleEnabled;
 }
 
 bool BLEManager::isConnected()
@@ -91,7 +137,7 @@ bool BLEManager::isConnected()
 
 void BLEManager::sendData(String data)
 {
-  if (deviceConnected && pCharacteristic != nullptr)
+  if (deviceConnected && pCharacteristic != nullptr && bleEnabled)
   {
     pCharacteristic->setValue(data.c_str());
     pCharacteristic->notify();
